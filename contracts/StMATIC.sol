@@ -2,271 +2,178 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-
-import "./interfaces/IValidatorShare.sol";
-import "./interfaces/INodeOperatorRegistry.sol";
-import "./interfaces/IStakeManager.sol";
-import "./interfaces/IPoLidoNFT.sol";
-import "./interfaces/IFxStateRootTunnel.sol";
-import "./interfaces/IStMATIC.sol";
-
+import 
+"@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"; import
+"@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol"; import
+"@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol"; import
+"@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "./interfaces/IValidatorShare.sol"; import
+"./interfaces/INodeOperatorRegistry.sol";
+import "./interfaces/IStakeManager.sol"; import
+"./interfaces/IPoLidoNFT.sol";
+import "./interfaces/IFxStateRootTunnel.sol"; import "./interfaces/IStMATIC.sol";
 /// @title StMATIC
-/// @author 2021 ShardLabs.
-contract StMATIC is
-    IStMATIC,
-    ERC20Upgradeable,
-    AccessControlUpgradeable,
-    PausableUpgradeable
-{
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    /// @notice node operator registry interface.
-    INodeOperatorRegistry public override nodeOperatorRegistry;
-
-    /// @notice The fee distribution.
-    FeeDistribution public override entityFees;
-
-    /// @notice StakeManager interface.
-    IStakeManager public override stakeManager;
-
-    /// @notice LidoNFT interface.
-    IPoLidoNFT public override poLidoNFT;
-
-    /// @notice fxStateRootTunnel interface.
-    IFxStateRootTunnel public override fxStateRootTunnel;
-
-    /// @notice contract version.
-    string public override version;
-
-    /// @notice dao address.
-    address public override dao;
-
-    /// @notice insurance address.
-    address public override insurance;
-
+/// @author 2021 ShardLabs. contract StMATIC is
+IStMATIC, ERC20Upgradeable,AccessControlUpgradeable, PausableUpgradeable
+{    
+using SafeERC20Upgradeable
+for IERC20Upgradeable; /// @notice node 
+operator registry interface.INodeOperatorRegistry
+public override nodeOperatorRegistry;/// @notice
+The fee distribution. FeeDistribution
+public override entityFees; /// @notice
+StakeManager interface. IStakeManager public
+override stakeManager;/// @notice
+LidoNFT interface.IPoLidoNFT public 
+override poLidoNFT; /// @notice 
+fxStateRootTunnel interface. IFxStateRootTunnel 
+public override fxStateRootTunnel; /// @notice
+contract version. 
+string public override version; 
+/// @notice dao address.
+address public override dao;
+/// @notice insurance address.
+address public override insurance;
     /// @notice Matic ERC20 token.
-    address public override token;
-
-    /// @notice Matic ERC20 token address NOT USED IN V2.
-    uint256 public override lastWithdrawnValidatorId;
-
-    /// @notice total buffered Matic in the contract.
-    uint256 public override totalBuffered;
-
-    /// @notice delegation lower bound.
-    uint256 public override delegationLowerBound;
-
-    /// @notice reward distribution lower bound.
-    uint256 public override rewardDistributionLowerBound;
-
-    /// @notice reserved funds in Matic.
-    uint256 public override reservedFunds;
-
+    address public
+override token; /// @notice Matic ERC20 
+token address NOT USED IN V2.uint256 public override lastWithdrawnValidatorId; /// @notice total buffered Matic in the contract. uint256 public 
+override totalBuffered;  /// @notice delegation
+lower bound. uint256 public override delegation
+LowerBound; /// @notice reward 
+distribution lower bound. uint256 public override reward
+DistributionLowerBound; /// @notice reserved funds in Matic.
+uint256 public override reservedFunds;
     /// @notice submit threshold NOT USED in V2.
     uint256 public override submitThreshold;
-
     /// @notice submit handler NOT USED in V2.
     bool public override submitHandler;
-
-    /// @notice token to WithdrawRequest mapping one-to-one.
-    mapping(uint256 => RequestWithdraw) public override token2WithdrawRequest;
-
-    /// @notice DAO Role.
-    bytes32 public constant override DAO = keccak256("DAO");
-    bytes32 public constant override PAUSE_ROLE =
-        keccak256("LIDO_PAUSE_OPERATOR");
-    bytes32 public constant override UNPAUSE_ROLE =
-        keccak256("LIDO_UNPAUSE_OPERATOR");
-
-    /// @notice When an operator quit the system StMATIC contract withdraw the total delegated
-    /// to it. The request is stored inside this array.
-    RequestWithdraw[] public stMaticWithdrawRequest;
-
-    /// @notice token to Array WithdrawRequest mapping one-to-many.
-    mapping(uint256 => RequestWithdraw[]) public token2WithdrawRequests;
-
-    /// @notice protocol fee.
-    uint8 public override protocolFee;
-
-    // @notice these state variable are used to mark entrance and exit form a contract function
-    uint256 private constant _NOT_ENTERED = 1;
-    uint256 private constant _ENTERED = 2;
-    uint256 private _status;
-
-    // @notice used to execute the recovery 1 time
-    bool private recovered;
-
-    /// @notice Prevents a contract from calling itself, directly or indirectly.
-    modifier nonReentrant() {
-        _nonReentrant();
-        _status = _ENTERED;
-        _;
-        _status = _NOT_ENTERED;
+    /// @notice token to WithdrawRequest
+mapping one-to-one.
+    mapping(uint256 => RequestWithdraw) public override token2Withdraw
+Request;
+    /// @notice DAO Role. bytes32 public constant override
+DAO = keccak256("DAO"); bytes32 public
+constant override PAUSE_ROLE =
+keccak256("LIDO_PAUSE_OPERATOR");
+bytes32 public constant override 
+UNPAUSE_ROLE =     
+keccak256("LIDO_UNPAUSE_OPERATOR"); /// @notice 
+When an operator quit the system StMATIC 
+contract withdraw the total delegated /// to it. 
+The request is stored inside this array.
+RequestWithdraw[]
+public stMaticWithdrawRequest; /// @notice 
+token to Array WithdrawRequest mapping one-to-many.
+mapping(uint256 => RequestWithdraw[]) public
+token2WithdrawRequests; /// @notice protocol fee. uint8 public 
+override protocolFee;/// @notice these state 
+variable are 
+used to mark entrance and exit 
+form a contract function
+uint256 private
+constant _NOT_ENTERED = 1; uint256 
+private 
+constant _ENTERED = 2; uint256 private _status; /// @notice used to execute the recovery 1 time bool private recovered;
+/// @notice Prevents a contract from calling itself,
+directly or indirectly. modifier nonReentrant() 
+{_nonReentrant();_status = _ENTERED;
+_ ; _status = _NOT_ENTERED;
     }
-
-    /// @param _nodeOperatorRegistry - Address of the node operator registry
-    /// @param _token - Address of MATIC token on Ethereum Mainnet
-    /// @param _dao - Address of the DAO
-    /// @param _insurance - Address of the insurance
-    /// @param _stakeManager - Address of the stake manager
-    /// @param _poLidoNFT - Address of the stMATIC NFT
-    /// @param _fxStateRootTunnel - Address of the FxStateRootTunnel
-    function initialize(
-        address _nodeOperatorRegistry,
-        address _token,
-        address _dao,
-        address _insurance,
-        address _stakeManager,
-        address _poLidoNFT,
-        address _fxStateRootTunnel
-    ) external override initializer {
-        __AccessControl_init_unchained();
-        __Pausable_init_unchained();
-        __ERC20_init_unchained("Staked MATIC", "stMATIC");
-
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(DAO, _dao);
-        _grantRole(PAUSE_ROLE, msg.sender);
-        _grantRole(UNPAUSE_ROLE, _dao);
-
-        nodeOperatorRegistry = INodeOperatorRegistry(_nodeOperatorRegistry);
-        stakeManager = IStakeManager(_stakeManager);
-        poLidoNFT = IPoLidoNFT(_poLidoNFT);
-        fxStateRootTunnel = IFxStateRootTunnel(_fxStateRootTunnel);
-        dao = _dao;
-        token = _token;
-        insurance = _insurance;
-
-        entityFees = FeeDistribution(25, 50, 25);
-    }
-
-    /// @notice Send funds to StMATIC contract and mints StMATIC to msg.sender
-    /// @notice Requires that msg.sender has approved _amount of MATIC to this contract
-    /// @param _amount - Amount of MATIC sent from msg.sender to this contract
-    /// @param _referral - referral address.
-    /// @return Amount of StMATIC shares generated
-    function submit(uint256 _amount, address _referral)
-        external
-        override
-        whenNotPaused
-        nonReentrant
-        returns (uint256)
-    {
-        _require(_amount > 0, "Invalid amount");
-
-        IERC20Upgradeable(token).safeTransferFrom(
-            msg.sender,
-            address(this),
-            _amount
-        );
-
-        (
-            uint256 amountToMint,
-            uint256 totalShares,
-            uint256 totalPooledMatic
-        ) = convertMaticToStMatic(_amount);
-
-        _require(amountToMint > 0, "Mint ZERO");
-
-        _mint(msg.sender, amountToMint);
-
-        totalBuffered += _amount;
-
-        _bridge(totalShares + amountToMint, totalPooledMatic + _amount);
-
-        emit SubmitEvent(msg.sender, _amount, _referral);
-
-        return amountToMint;
-    }
-
+    /// @param _nodeOperatorRegistry - Address of 
+         the node operator registry /// @param _token - Address of 
+         MATIC token on Ethereum Mainnet  /// @param _dao - Address 
+         of the DAO /// @param _insurance - Address of
+          the insurance /// @param _stakeManager - Address of
+          the stake manager /// @param _poLidoNFT - Address of
+          the stMATIC NFT /// @param _fxStateRootTunnel - Address of 
+              the FxStateRootTunnel
+    function initialize( address _nodeOperatorRegistry,
+address _token, address _dao, address
+_insurance,  address 
+_stakeManager, address 
+_poLidoNFT, 
+address _fxStateRootTunnel) external override 
+initializer{__AccessControl_init_unchained
+();__Pausable_init_unchained();__ERC20_init_unchained
+("Staked MATIC","stMATIC");_grantRole
+(DEFAULT_ADMIN_ROLE, msg.sender);_grant
+Role(DAO, _dao);_grantRole(PAUSE_ROLE, 
+msg.sender);_grantRole
+(UNPAUSE_ROLE, _dao);nodeOperatorRegistry = INodeOperatorRegistry
+(_nodeOperatorRegistry); stakeManager = IStakeManager
+(_stakeManager); poLidoNFT = IPoLidoNFT
+(_poLidoNFT); fxStateRootTunnel = IFxState
+RootTunnel(_fxStateRootTunnel);dao = _dao; token = _token; insurance = _insurance; entity
+Fees = FeeDistribution(25, 50, 25);} /// @notice Send funds
+to StMATIC contract and mints StMATIC to msg.sender /// @notice 
+Requires that msg.sender has approved _amount of MATIC to this contract /// @param _amount - Amount of
+MATIC sent from msg.sender to
+this contract /// @param _referral - referral address. /// @return Amount of 
+StMATIC shares generated function
+submit(uint256 _amount, address _referral) external override
+whenNotPaused nonReentrant returns (uint256)    
+{_require(_amount > 0, "Invalid amount"); IERC20Upgradeable
+(token).safeTransferFrom(msg.sender, address(this),_amount);  
+( uint256 amountToMint,uint256 
+totalShares, uint256 total
+PooledMatic) = convert
+MaticToStMatic(_amount);_require(amountToMint > 0, "Mint
+ZERO");_mint(msg.sender,
+amountToMint); totalBuffered 
++= _amount; _bridge(totalShares + amountToMint, totalPooledMatic + _amount);
+ emit SubmitEvent
+(msg.sender, _amount, _referral);
+return amountToMint;}
     /// @notice Stores users request to withdraw into a RequestWithdraw struct
     /// @param _amount - Amount of StMATIC that is requested to withdraw
     /// @param _referral - referral address.
     /// @return NFT token id.
-    function requestWithdraw(uint256 _amount, address _referral)
-        external
-        override
-        whenNotPaused
-        nonReentrant
-        returns (uint256)
-    {
-        _require(
-            _amount > 0 && balanceOf(msg.sender) >= _amount,
-            "Invalid amount"
-        );
-        uint256 tokenId;
-
-        {
-            uint256 totalPooledMatic = getTotalPooledMatic();
-            uint256 totalAmount2WithdrawInMatic = _convertStMaticToMatic(
-                _amount,
-                totalPooledMatic
-            );
-            _require(totalAmount2WithdrawInMatic > 0, "Withdraw ZERO Matic");
-
-            (
-                INodeOperatorRegistry.ValidatorData[] memory activeNodeOperators,
-                uint256 totalDelegated,
-                uint256[] memory bigNodeOperatorIds,
-                uint256[] memory smallNodeOperatorIds,
-                uint256[] memory allowedAmountToRequestFromOperators,
-                uint256 totalValidatorsToWithdrawFrom
-            ) = nodeOperatorRegistry.getValidatorsRequestWithdraw(totalAmount2WithdrawInMatic);
-
-            {
-                uint256 totalBufferedMem = totalBuffered;
-                uint256 reservedFundsMem = reservedFunds;
-                uint256 localActiveBalance = totalBufferedMem > reservedFundsMem
-                    ? totalBufferedMem - reservedFundsMem
-                    : 0;
-                uint256 liquidity = totalDelegated + localActiveBalance;
-                _require(
-                    liquidity >= totalAmount2WithdrawInMatic,
-                    "Too much to withdraw"
-                );
-            }
-            // Added a scoop here to fix stack too deep error
-            {
-                uint256 currentAmount2WithdrawInMatic = totalAmount2WithdrawInMatic;
-                tokenId = poLidoNFT.mint(msg.sender);
-
-                if (totalDelegated != 0) {
-                    if (totalValidatorsToWithdrawFrom != 0) {
-                        currentAmount2WithdrawInMatic = _requestWithdrawBalanced(
-                            tokenId,
-                            activeNodeOperators,
-                            totalAmount2WithdrawInMatic,
-                            totalValidatorsToWithdrawFrom,
-                            totalDelegated,
-                            currentAmount2WithdrawInMatic
-                        );
-                    } else {
-                        // request withdraw from big delegated validators
-                        currentAmount2WithdrawInMatic = _requestWithdrawUnbalanced(
-                            tokenId,
-                            activeNodeOperators,
-                            bigNodeOperatorIds,
-                            allowedAmountToRequestFromOperators,
-                            currentAmount2WithdrawInMatic
-                        );
-
-                        // request withdraw from small delegated validators
-                        if (currentAmount2WithdrawInMatic != 0) {
-                            currentAmount2WithdrawInMatic = _requestWithdrawUnbalanced(
-                                tokenId,
-                                activeNodeOperators,
-                                smallNodeOperatorIds,
-                                allowedAmountToRequestFromOperators,
-                                currentAmount2WithdrawInMatic
-                            );
-                        }
-                    }
-                }
+    function requestWithdraw(uint256 _amount, address _referral) external
+    override whenNotPaused nonReentrant returns (uint256)
+    {_require( _amount > 0 && balanceOf(msg.sender) >= _amount,"Invalid
+amount"); uint256 tokenId; { uint256 totalPooledMatic = get
+TotalPooledMatic(); uint256 totalAmount2
+WithdrawInMatic = _convertStMaticToMatic
+(_amount,totalPooledMatic);_require(totalAmountWithdrawInMatic > 0, "Withdraw 
+ZERO Matic");
+(INodeOperatorRegistry.ValidatorData[] 
+memory activeNodeOperators, uint256 
+totalDelegated, uint256[] 
+memory bigNodeOperatorIds,uint256[] 
+memory smallNodeOperatorIds,uint256[] memory allowedAmount
+ToRequestFromOperators,uint256 total
+ValidatorsToWithdrawFrom)= nodeOperatorRegistry.getValidators
+RequestWithdraw(totalAmount2WithdrawInMatic);{ uint256 total
+BufferedMem = totalBuffered; uint256 reserved
+FundsMem = reservedFunds; uint256 local
+ActiveBalance = totalBufferedMem > reservedFundsMem ? total
+BufferedMem - reservedFundsMem: 0; uint256 liquidity = total
+Delegated + localActive
+Balance; _require( liquidity >= totalAmount2WithdrawIn
+Matic,"Too much to withdraw");}// Added a scoop here to
+fix stack too deep error{ uint256 current
+Amount2WithdrawInMatic = totalAmount2
+WithdrawInMatic; tokenId = poLidoNFT.mint(msg.sender);
+if (totalDelegated != 0){if 
+(totalValidatorsToWithdrawFrom != 0) {currentAmount2WithdrawIn
+Matic = _requestWithdrawBalanced(tokenId,active
+NodeOperators,totalAmount2WithdrawInMatic,
+totalValidatorsToWithdrawFrom,totalDelegated,current
+Amount2WithdrawInMatic)} else{ // request withdraw 
+from big delegated validators currentAmount2WithdrawIn
+Matic = _requestWithdrawUnbalanced(tokenId, activeNodeOperators,
+  bigNodeOperatorIds, allowedAmountToRequestFromOperators, currentAmount2WithdrawIn
+Matic); // request withdraw 
+from small delegated validators if (currentAmount2WithdrawIn
+Matic != 0) { currentAmount2WithdrawIn
+Matic = _requestWithdrawUnbalanced( tokenId,activeNodeOperators,smallNode
+OperatorIds,allowedAmountToRequest
+FromOperators, currentAmount2WithdrawIn
+Matic);                        
+}}          
+}
 
                 if (totalAmount2WithdrawInMatic > totalDelegated) {
                     IStakeManager stakeManagerMem = stakeManager;
@@ -1032,7 +939,6 @@ contract StMATIC is
 
         emit SetProtocolFee(oldProtocolFee, _newProtocolFee);
     }
-
     /// @notice Function that sets new dao address
     /// @notice Callable only by dao
     /// @param _newDAO - New dao address
@@ -1041,7 +947,6 @@ contract StMATIC is
         dao = _newDAO;
         emit SetDaoAddress(oldDAO, _newDAO);
     }
-
     /// @notice Function that sets new insurance address
     /// @notice Callable only by dao
     /// @param _address - New insurance address
@@ -1053,46 +958,41 @@ contract StMATIC is
         insurance = _address;
         emit SetInsuranceAddress(_address);
     }
-
     /// @notice Function that sets new node operator address
     /// @notice Only callable by dao
     /// @param _address - New node operator address
     function setNodeOperatorRegistryAddress(address _address)
-        external
-        override
-        onlyRole(DAO)
-    {
-        nodeOperatorRegistry = INodeOperatorRegistry(_address);
-        emit SetNodeOperatorRegistryAddress(_address);
-    }
-
+external
+override
+onlyRole(DAO)
+    {     
+nodeOperatorRegistry = INodeOperatorRegistry(_address);
+emit SetNodeOperatorRegistryAddress(_address); 
+}
     /// @notice Function that sets new lower bound for delegation
     /// @notice Only callable by dao
     /// @param _delegationLowerBound - New lower bound for delegation
     function setDelegationLowerBound(uint256 _delegationLowerBound)
-        external
-        override
-        onlyRole(DAO)
-    {
-        delegationLowerBound = _delegationLowerBound;
-        emit SetDelegationLowerBound(_delegationLowerBound);
+external    
+override     
+onlyRole(DAO)    
+{      
+delegationLowerBound = _delegationLowerBound;
+emit SetDelegationLowerBound(_delegationLowerBound);
     }
-
     /// @notice Function that sets new lower bound for rewards distribution
     /// @notice Only callable by dao
-    /// @param _newRewardDistributionLowerBound - New lower bound for rewards distribution
+    /// @param _newRewardDistributionLowerBound - New lower
+    /// @bound for rewards distribution
     function setRewardDistributionLowerBound(
         uint256 _newRewardDistributionLowerBound
     ) external override onlyRole(DAO) {
         uint256 oldRewardDistributionLowerBound = rewardDistributionLowerBound;
-        rewardDistributionLowerBound = _newRewardDistributionLowerBound;
-
-        emit SetRewardDistributionLowerBound(
-            oldRewardDistributionLowerBound,
-            _newRewardDistributionLowerBound
-        );
+        rewardDistributionLowerBound = _newRewardDistributionLowerBound;       
+emit SetRewardDistributionLowerBound(
+oldRewardDistributionLowerBound,  
+_newRewardDistributionLowerBound);
     }
-
     /// @notice Function that sets the poLidoNFT address
     /// @param _newLidoNFT new poLidoNFT address
     function setPoLidoNFT(address _newLidoNFT) external override onlyRole(DAO) {
@@ -1100,113 +1000,106 @@ contract StMATIC is
         poLidoNFT = IPoLidoNFT(_newLidoNFT);
         emit SetLidoNFT(oldPoLidoNFT, _newLidoNFT);
     }
-
     /// @notice Function that sets the fxStateRootTunnel address
     /// @param _newFxStateRootTunnel address of fxStateRootTunnel
-    function setFxStateRootTunnel(address _newFxStateRootTunnel)
-        external
-        override
-        onlyRole(DAO)
+    function setFxStateRootTunnel(address _newFxStateRootTunnel)       
+external       
+override      
+onlyRole(DAO)    
+{
+address oldFxStateRootTunnel = address(fxStateRootTunnel); 
+fxStateRootTunnel = IFxStateRootTunnel(_newFxStateRootTunnel);    
+emit SetFxStateRootTunnel(oldFxStateRootTunnel, _newFxStateRootTunnel);    
+}  
+/// @notice Function that sets the new version
+/// @param _newVersion - New version that will be set
+    function setVersion(string calldata _newVersion)     
+external
+override
+onlyRole(DAO)
     {
-        address oldFxStateRootTunnel = address(fxStateRootTunnel);
-        fxStateRootTunnel = IFxStateRootTunnel(_newFxStateRootTunnel);
-
-        emit SetFxStateRootTunnel(oldFxStateRootTunnel, _newFxStateRootTunnel);
+emit Version(version, _newVersion);
+version = _newVersion;
     }
-
-    /// @notice Function that sets the new version
-    /// @param _newVersion - New version that will be set
-    function setVersion(string calldata _newVersion)
-        external
-        override
-        onlyRole(DAO)
-    {
-        emit Version(version, _newVersion);
-        version = _newVersion;
-    }
-
-    /// @notice Function that retrieves the amount of matic that will be claimed from the NFT token
+    /// @notice Function that retrieves the 
+     ///@amount of matic that will be claimed from the NFT token
     /// @param _tokenId - Id of the PolidoNFT
-    function getMaticFromTokenId(uint256 _tokenId)
+    function 
+getMaticFromTokenId(uint256 _tokenId)
         external
         view
-        override
-        returns (uint256)
-    {
-        if (token2WithdrawRequest[_tokenId].requestEpoch != 0) {
-            return _getMaticFromRequestData(token2WithdrawRequest[_tokenId]);
-        } else if (token2WithdrawRequests[_tokenId].length != 0) {
-            RequestWithdraw[] memory requestsData = token2WithdrawRequests[
-                _tokenId
-            ];
-            uint256 totalMatic;
-            for (uint256 idx = 0; idx < requestsData.length; idx++) {
-                totalMatic += _getMaticFromRequestData(requestsData[idx]);
-            }
-            return totalMatic;
-        }
-        return 0;
+        override       
+returns (uint256)   
+{      
+if (token2WithdrawRequest[_tokenId].requestEpoch != 0) {   
+return _getMaticFromRequestData(token2WithdrawRequest[_tokenId]);
+} else if (token2WithdrawRequests[_tokenId].length != 0) 
+{         
+RequestWithdraw[] memory requestsData = token2WithdrawRequests
+[ _tokenId];
+            uint256 totalMatic;  
+for (uint256 idx = 0; idx < requestsData.length; idx++) 
+{
+totalMatic += _getMaticFromRequestData(requestsData[idx]);       
+}        
+return totalMatic;      
+}       
+return 0;
     }
-
-    function _getMaticFromRequestData(RequestWithdraw memory requestData)
-        private
-        view
-        returns (uint256)
+    function _getMaticFromRequestData(RequestWithdraw memory requestData) 
+private     
+view  
+returns (uint256)
     {
-        if (requestData.validatorAddress == address(0)) {
+        if (requestData.validatorAddress == address(0)) 
+{
             return requestData.amount2WithdrawFromStMATIC;
-        }
-        IValidatorShare validatorShare = IValidatorShare(
-            requestData.validatorAddress
+}
+        IValidatorShare validatorShare = IValidatorShare(   
+requestData.validatorAddress
         );
-        uint256 exchangeRatePrecision = _getExchangeRatePrecision(
-            validatorShare.validatorId()
+        uint256 exchangeRatePrecision = _getExchangeRatePrecision(   
+validatorShare.validatorId()
         );
         uint256 withdrawExchangeRate = validatorShare.withdrawExchangeRate();
         IValidatorShare.DelegatorUnbond memory unbond = validatorShare
             .unbonds_new(address(this), requestData.validatorNonce);
-
-        return (withdrawExchangeRate * unbond.shares) / exchangeRatePrecision;
+return (withdrawExchangeRate * unbond.shares) / exchangeRatePrecision;
+    } 
+function _nonReentrant() private view
+{      
+_require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
     }
-
-    function _nonReentrant() private view {
-        _require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
-    }
-
-    function _require(bool _condition, string memory _message) private pure {
-        require(_condition, _message);
-    }
-
+function _require(bool _condition, string memory _message) private pure
+{require(_condition, _message);}
     /// @dev get the exchange rate precision per validator.
-    /// More details: https://github.com/maticnetwork/contracts/blob/v0.3.0-backport/contracts/staking/validatorShare/ValidatorShare.sol#L21
-    /// https://github.com/maticnetwork/contracts/blob/v0.3.0-backport/contracts/staking/validatorShare/ValidatorShare.sol#L87
-    function _getExchangeRatePrecision(uint256 _validatorId)
-        private
-        pure
-        returns (uint256)
-    {
-        return _validatorId < 8 ? 100 : 10**29;
-    }
-
-    /// @dev calculate the number of shares to get when delegate an amount of Matic
-    function _calculateValidatorShares(
-        address _validatorAddress,
-        uint256 _amountInMatic
-    ) private view returns (uint256) {
-        IValidatorShare validatorShare = IValidatorShare(_validatorAddress);
-        uint256 exchangeRatePrecision = _getExchangeRatePrecision(
-            validatorShare.validatorId()
-        );
-        uint256 rate = validatorShare.exchangeRate();
-        return (_amountInMatic * exchangeRatePrecision) / rate;
-    }
-
-    /// @dev call fxStateRootTunnel to update L2.
-    function _bridge(uint256 _totalSupply, uint256 _totalPooledMatic) private {
-        fxStateRootTunnel.sendMessageToChild(abi.encode(_totalSupply, _totalPooledMatic));
-    }
-
-    function min(uint256 _valueA, uint256 _valueB) private pure returns(uint256) {
-        return _valueA > _valueB ? _valueB : _valueA;
-    }
+    /// More details: 
+https://github.com/maticnetwork/contracts
+/blob/v0.3.0-backport/contracts/staking/validatorShare
+/ValidatorShare.sol#L21 ///https://github.com/maticnetwork/contracts
+/blob/v0.3.0-backport/contracts/staking/validatorShare/ValidatorShare.sol#L87
+function 
+_getExchangeRatePrecision(uint256 _validatorId)
+private  pure returns (uint256){ return _validatorId < 8 ? 100 : 10**29; }
+/// @dev calculate the number of shares to get when 
+delegate an amount of Matic function _calculateValidatorShares
+( address _validatorAddress,uint256 _amountInMatic ) 
+private view returns (uint256) 
+{ IValidatorShare validatorShare = IValidatorShare
+(_validatorAddress);uint256 exchangeRatePrecision =_getExchangeRatePrecision
+(validatorShare.validatorId());     
+uint256 rate = validatorShare.exchangeRate();     
+return (_amountInMatic * exchangeRatePrecision)
+/ rate;
+}    
+/// @dev call fxStateRootTunnel 
+to update L2. 
+function _bridge(uint256 _totalSupply, 
+uint256 _totalPooledMatic) private 
+{ fxStateRootTunnel.sendMessageToChild
+(abi.encode(_totalSupply, _totalPooledMatic));}  
+function min
+(uint256 _valueA, uint256 _valueB)
+private pure returns(uint256)
+{ return _valueA > _valueB ? _valueB : _valueA;}
 }
